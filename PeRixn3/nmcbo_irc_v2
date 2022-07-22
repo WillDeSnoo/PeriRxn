@@ -1,0 +1,31 @@
+#!/bin/bash
+#Returns all nmcbo for .fchk files in current directory
+#Input (indicies of aromatic atoms: 1,2,3,4...)
+exec 2> /dev/null
+nmcbo=()
+line=""
+c=0
+
+# Clearing output file
+> mcbo.out
+
+# Loop through all .fchk files for MCBO
+for V in *.fchk; do
+	if grep -q Bq "$V"; then	
+		printf "y\n9\n2\n$1\n" | /home/william/multiwfn38dev/Multiwfn $V >> mcbo.out
+	else
+		printf "9\n2\n$1\n" | /home/william/multiwfn38dev/Multiwfn $V >> mcbo.out
+	fi
+	line=$(grep 'normalized multicenter' mcbo.out)
+	echo $line
+	nmcbo+=($(echo $line | awk '{print $NF}'))
+	#echo "nmcbo for this step: ${nmcbo[c]}"
+	((c++))
+done
+
+c=0
+for V in *fchk
+do
+	echo ${nmcbo[c]}
+	((c++))
+done

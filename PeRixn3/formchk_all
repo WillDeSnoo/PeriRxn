@@ -1,0 +1,9 @@
+#!/bin/bash
+# runs formchk on all .chk files in current directory
+echo "Generating formchk files..."
+
+for inf in *chk; do
+	formchk $inf
+done
+
+echo "Finished generating fchk files"
