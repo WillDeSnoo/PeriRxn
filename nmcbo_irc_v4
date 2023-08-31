@@ -1,0 +1,30 @@
+#!/bin/bash
+#Returns all nmcbo for .fchk files in current directory
+#Input (indicies of aromatic atoms: 1,2,3,4...)
+exec 2> /dev/null
+nmcbo=()
+line=""
+c=0
+
+# Clearing output file
+> mcbo.out
+
+# Loop through all .fchk files for MCBO
+for V in *.fchk; do
+	if [[ $(sed -n -e '/Atomic/,/Nuclear/ p' $@) == *" 0 "* ]]; then
+		echo "BQ detected..."
+		printf "n\n9\n2\n$1\n" | /home/william/multiwfn38dev/Multiwfn $V >> mcbo.out
+	else
+		printf "n\n9\n2\n$1\n" | /home/william/multiwfn38dev/Multiwfn $V >> mcbo.out
+	fi
+	line=$(grep 'normalized multicenter' mcbo.out)
+	nmcbo+=($(echo $line | awk '{print $NF}'))
+	((c++))
+done
+
+c=0
+for V in *fchk
+do
+	echo ${nmcbo[c]}
+	((c++))
+done
