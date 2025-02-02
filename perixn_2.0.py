@@ -7,6 +7,7 @@ import sys
 import os
 import matplotlib.pyplot as plt
 import re
+import shutil
 
 # CHANGE FOLLOWING PARAMETERS ACCORDINGLY
 # -------------------------------------------------------------------------- #
@@ -75,13 +76,17 @@ def get_coords(lines, lt):
         if "Input orientation:" in line:  # Finding indicator of coordinates in log file
             curr_i = i + 5  # Coordinates begin 5 lines after this keyword
             coords = []
-            while '------' not in lines[curr_i]:  # -- indicates end of coordinates
-                rm_space = " ".join(lines[curr_i].split())
-                stripped = np.asarray(rm_space.split(' '))
-                curr_coords = stripped[[-5, -3, -2, -1]]
-                coords.append(curr_coords)
-                curr_i += 1
-            irc_coords.append(coords)
+            if "Total number" in lines[i-2]:
+                continue
+            else:
+                while '------' not in lines[curr_i]:  # -- indicates end of coordinates
+                    rm_space = " ".join(lines[curr_i].split())
+                    stripped = np.asarray(rm_space.split(' '))
+                    curr_coords = stripped[[-5, -3, -2, -1]]
+                    coords.append(curr_coords)
+                    curr_i += 1
+                    
+                irc_coords.append(coords)
 
         elif 'ning calculation of the REVERSE path' in line:  # Find where IRC flips direction
             flip = len(irc_coords)
@@ -115,42 +120,48 @@ def get_log_type(lines): #Returns: 0=IRC, 1=TRAJ, 2=OPT
     print("Log file not IRC or TRAJ, assuming is an optimization or singlepoint")
     return 2
         
+def get_func_basis(lst):
+    # Iterate through the list to find an element containing "/"
+    for element in lst:
+        if "/" in element:
+            print(element)
+            func_basis = element.split("/")
+            return func_basis
+    
+    # If no element contains "/", prompt the user for data
+    func_basis = input("Func/Basis not found in route line. Please provide input with 'func/basis': ").split("/")
+    return func_basis
 
 def get_func_bas_chrg_mult(lines):
     f=None
     b=None
     c=None
     m=None
+    route_line=""
     for i in range(len(lines)):
         line = lines[i]
         if " Charge = " in line:
             splitline = ' '.join(line.split()).split(' ')
             c = splitline[2]
             m = splitline[-1]
+            print(f'Charge and Multiplicty found. Charge: {c}, Multiplicity: {m}')
             
-        elif " ******************************************" in line:
-            i+=1
+        elif " #" in line:
             curr_line = lines[i]
-            while "---------------------------------------------" not in curr_line:
+            while "---" not in curr_line:
+                route_line += curr_line.strip()
                 i += 1
                 curr_line = lines[i]
-            route_line = lines[i+1].strip()
-            i+=1
-            curr_line = lines[i]
-            while "---------------------------------------------" not in curr_line:
-                route_line = route_line + curr_line.strip()
-                i+=1
-                curr_line = lines[i]
-                
-            splitline = route_line.split(' ')
-            for x in splitline:
-                if '/' in x:
-                    f, b = x.split('/')
-                    print(f'func: {f} basis: {b}')
+        if route_line != "" and all(var is not None for var in (c, m)):
+            print(f'Route line found: {route_line}')
+            break
+    splitline = route_line.split(' ')
+    f,b=get_func_basis(splitline)              
 
-        if None not in (f,b,c,m): # If each variable has been given a value
-            print("Func, Basis, Charge, Mult: {} {} {} {}".format(f,b,c,m))
-            return (f,b,c,m)
+
+    if None not in (f,b,c,m): # If each variable has been given a value
+        print("Func, Basis, Charge, Mult: {} {} {} {}".format(f,b,c,m))
+        return (f,b,c,m)
 
 
 def prompt_jt( jt): # Returns the jobtype to create, none=both , 0=cancel, 1=nics, 2=mcbo
@@ -243,6 +254,8 @@ def prompt_arom_atoms():
                          
     arom_atoms = input("Please type the indicies of the aromatic carbons (ie. 1,2,3,4...):\
                       If diels-alder type reaction, enter the indices of aromatic atoms of two fragments seperated by a space (i.e 1,2,3,4 5,6): ")
+    open("arom_atoms.txt","w").write(arom_atoms)
+        
     
     frag1 = None
     frag2 = None                                                                                                                            
@@ -257,6 +270,7 @@ def prompt_arom_atoms():
 def split_irc_steps(tot_points, ts_step, max_step, lt):
     if lt == 0: # IRC > split to front and back of TS
         left_irc = np.linspace(1, ts_step, int(np.ceil(tot_points / 2)), dtype=int)
+        print(f'running: np.linspace({ts_step},{max_step},{int(np.ceil(tot_points/2))},dtype=int')
         right_irc = np.linspace(ts_step, max_step, int(np.ceil(tot_points / 2)), dtype=int)
         rxn_points = np.concatenate((left_irc[:-1], right_irc))
         return rxn_points
@@ -266,7 +280,8 @@ def split_irc_steps(tot_points, ts_step, max_step, lt):
         return rxn_points
     
     elif lt ==2: # OPT OR SP
-        rxn_points=np.asarray([1])
+        rxn_points=np.asarray([-1])
+        print(f'rxn_points:{rxn_points}')
         return rxn_points
 
 def set_dir_name(dir_name, jt):
@@ -325,8 +340,10 @@ def create_gaussian_job(bq_points, rxn_points, irc_coords, jt, directory_name, a
             nc=cent - nics_index * nvec
             nics_coords.append(['Bq', str(nc)])
             
-        ## THINK ABOUT THIS NEXT LINE, WHERE SHOULD IT GO
+        
         output_template = get_output_template(n, nprocshared, mem, jt, functional, basis, title, charge, multiplicity, addnl_route)
+        if n==-1:
+            n=1
         outfilename=directory_name+'_REPLACE.gjf'
         with open(directory_name + '/' + outfilename.replace('REPLACE', str(n).zfill(4)), 'w') as f:
             for line in output_template:
@@ -410,6 +427,9 @@ def get_output_template(rxn_step, nprocshared, mem, jt, functional, basis, title
     outfilename = ""
     output_template = ""
     chkline = ""
+    if rxn_step==-1:
+        rxn_step=1
+        print("reset rxn step")
     if jt == 0:
         jobtype = "nmr"
         outfilename="peri_irc_REPLACE.com"
@@ -527,9 +547,13 @@ def run(infilename=None):
     coords, ts_step = get_coords(lines, lt) # Get coordinates of IRC/TRAJ/OPT
                                             # Also returns the step # of ts
     #plot_atoms(coords[5])
-    
+    print(coords[:,0])
+    print(len(coords))
     bq_points = np.arange(bq_min, bq_max+0.00001, bq_spacing)
+    #rxn_points=[32,33,34,36,37,38]
+    
     rxn_points = split_irc_steps(tot_points, ts_step, len(coords), lt)
+    print(f'rxn_points: {rxn_points}')
     
     if not fullDefault: # Set fullDefault=False to allow user override/check
         # Specify mNICS, MCBO or both job preparation
@@ -547,9 +571,14 @@ def run(infilename=None):
     
     create_gaussian_job(bq_points, rxn_points, coords, jt, directory_name, arom_atoms, nprocshared, mem, f, b, title, c, m, addnl_route, extra_lines)
     
+    shutil.copyfile("./"+infilename, "./peri_irc/"+infilename)
 
 def main(argv):
-    run(argv[0])
+    if not argv:
+        filename=input("Please type the name of the log file.\n")
+        run(filename)
+    else:
+        run(argv[0])
         
     
 if __name__ == "__main__":

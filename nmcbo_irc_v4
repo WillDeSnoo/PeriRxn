@@ -23,7 +23,7 @@ for V in *.fchk; do
 done
 
 c=0
-for V in *fchk
+for V in *fchk;
 do
 	echo ${nmcbo[c]}
 	((c++))
