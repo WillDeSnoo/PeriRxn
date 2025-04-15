@@ -70,13 +70,17 @@ def get_lines(infilename):
 def get_coords(lines, lt):
     flip = None
     irc_coords = []
+    extraCoord=True
     for i in range(len(lines)):
         line = lines[i]
-
+        if "rcfc" in line:
+            print('chk is True')
+            extraCoord=True
         if "Input orientation:" in line:  # Finding indicator of coordinates in log file
             curr_i = i + 5  # Coordinates begin 5 lines after this keyword
             coords = []
-            if "Total number" in lines[i-2]:
+            if "Total number" in lines[i-2] and extraCoord:
+                print('Skipping extra coord line...')
                 continue
             else:
                 while '------' not in lines[curr_i]:  # -- indicates end of coordinates
@@ -406,22 +410,20 @@ def centroid(points):
 
 
 def norm_vect(points):
-    """
-    Finds vector that is normal to the plane that best fits
-        the points passed in. Finds through SVD.
-    :param points: Nx3 2D Array of xyz coordinates of N atoms
-    :return: 1x3 array, [x,y,z], vector normal to the plane
-        that best fits the points
-    """
-    points_m_centroid = points - centroid(points)
-    u, s, vh = np.linalg.svd(points_m_centroid)
-    v=vh.transpose()
-    nvec = v[:, 2]
-    #print('normal vector')
-    #print(nvec)
-    if nvec[2] < 0:  # Ensure normal vector is always in +z direction
-        nvec *= -1
-    return nvec
+    points = np.array(points)
+
+    # Center the data by subtracting the mean
+    centered_points = points - np.mean(points, axis=0)
+
+    # Perform PCA
+    from sklearn.decomposition import PCA
+    pca = PCA(n_components=3)
+    pca.fit(centered_points)
+
+    # The third principal component (smallest variance) is the normal vector
+    normal_vector = pca.components_[2]
+
+    return normal_vector
 
 def get_output_template(rxn_step, nprocshared, mem, jt, functional, basis, title, charge, multiplicity, addnl_route):
     outfilename = ""
@@ -550,9 +552,9 @@ def run(infilename=None):
     print(coords[:,0])
     print(len(coords))
     bq_points = np.arange(bq_min, bq_max+0.00001, bq_spacing)
-    #rxn_points=[32,33,34,36,37,38]
+    rxn_points=[1,5,10,15,20,25,30,35,40,45,50,55,60,65,70,75,80,85,90,95,100]
     
-    rxn_points = split_irc_steps(tot_points, ts_step, len(coords), lt)
+    #rxn_points = split_irc_steps(tot_points, ts_step, len(coords), lt)
     print(f'rxn_points: {rxn_points}')
     
     if not fullDefault: # Set fullDefault=False to allow user override/check
