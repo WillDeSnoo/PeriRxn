@@ -1,7 +1,11 @@
 # PeriRxn
-Python scripts for creating gaussian input files for analyzing NICSzz and normalized multicentered bond orders (nMCBO) to characterize pericyclic reactions. Create figures like the one shown below:
-![alt text](https://github.com/WillDeSnoo/PeriRxn/blob/02_01_2025/exampleCope/mNICS_mNMCBO_IRC_Plot.png)
-![alt text](https://github.com/WillDeSnoo/PeriRxn/blob/02_01_2025/exampleCope/NICS_IRC_Scan_Plot.png)
+
+Python scripts for creating Gaussian input files for analyzing **NICSzz** and **normalized multicentered bond orders (nMCBO)** to characterize pericyclic reactions.  
+
+The package also provides utilities for figure generation, such as the examples shown below:
+
+![mNICS + mNMCBO Plot](https://github.com/WillDeSnoo/PeriRxn/blob/02_01_2025/exampleCope/mNICS_mNMCBO_IRC_Plot.png)  
+![NICS IRC Scan Plot](https://github.com/WillDeSnoo/PeriRxn/blob/02_01_2025/exampleCope/NICS_IRC_Scan_Plot.png)
 
 ---
 
@@ -9,7 +13,7 @@ Python scripts for creating gaussian input files for analyzing NICSzz and normal
 - Generate Gaussian input files for NICSzz and nMCBO calculations.  
 - Analyze reaction pathways and extract bonding indicators.  
 - Plot NICS and nMCBO values along intrinsic reaction coordinates (IRCs).  
-- Tools for visualizing aromatic/antiaromatic character during pericyclic reactions.  
+- Visualize aromatic/antiaromatic character during pericyclic reactions.  
 
 ---
 
@@ -19,29 +23,57 @@ Clone the repository:
 ```bash
 git clone https://github.com/WillDeSnoo/PeriRxn.git
 cd PeriRxn
-
-First make the following scripts executable
+```
+Make the main scripts executable:
+```
 chmod u+x perirxn_2.0.py
 chmod u+x peridata_ShieldTensor.py
-
-Then add the scripts to path.
-export PATH="$PATH:/path/to/PeriRxn/scripts"
-
-
+```
+Add the scripts to your $PATH (e.g. in ~/.bashrc or ~/.zshrc):
+```
+export PATH="$PATH:/path/to/PeriRxn"
+```
 ---
+## Requirements
+
+Python 3.8+
+
+Multiwfn
+ (required for the nMCBO portion of the analysis)
 
 ## Usage
+### Step 1: Generate Gaussian Input Files
 
-Create input files from a gaussian irc log file with perirxn_2.0.py. Note the irc should be bidirectional. Answer the respective prompts.
-
+From a Gaussian IRC log file, run:
+```
 perirxn_2.0.py irc.log
+```
 
-1,2,3,4,5,6
+Notes:
 
-This will create a directory called peri_irc with input files with reguarly spaced ghost atoms to sample NICSzz. Run these input files with Gaussian.
+The IRC must be bidirectional.
 
-After running the newly generated inputfiles, we can analyze and plot the data with the peridata_ShieldTensor.py script. Enter the peri_irc directory with the log files, execute the script and follow the prompts.
+If the level of theory is not detected, you will be prompted to enter it.
 
-peridata_ShieldTensor.py 
+You will also be asked to specify indices of aromatic atoms:
+```
+Please type the indices of the aromatic carbons (i.e. 1,2,3,4...):
+If Diels–Alder type reaction, enter the indices of aromatic atoms of two fragments separated by a space (i.e. 1,2,3,4 5,6):
+```
 
-Generate plots as shown above, and save the data to nics_mcbo_data.xlsx file for further analysis.
+This creates a directory called peri_irc/ containing input files with regularly spaced ghost atoms for NICSzz sampling. Run these input files with Gaussian.
+
+
+### Step 2: Analyze and Plot Results
+
+After running the Gaussian input files, move into the peri_irc/ directory containing the .log files and run:
+```
+peridata_ShieldTensor.py irc.log
+```
+This script will:
+
+Extract NICS and nMCBO data
+
+Generate plots (as shown above)
+
+Save results to nics_mcbo_data.xlsx for further analysis
